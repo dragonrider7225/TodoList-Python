@@ -5,18 +5,18 @@ from tkinter import filedialog as fd
 from tkinter import ttk
 from tkinter.constants import *
 
-def bitsToStr(bits, numBytes):
-    ret = ""
+def bitsToBytes(bits, numBytes):
+    ret = b""
     for i in range(numBytes):
-        ret = chr(bits & ((1 << 8) - 1)) + ret
+        ret = bytes([bits & ((1 << 8) - 1)]) + ret
         bits >>= 8
     return ret
 
-def strToBits(s):
+def bytesToBits(s):
     ret = 0
     while s:
         ret <<= 8
-        ret += ord(s[0])
+        ret += s[0]
         s = s[1:]
     return ret
 
@@ -39,6 +39,27 @@ class Datetime(metaclass=BoundedRollover):
         self.__day = day
         self.__hr = hour
         self.__min = minute
+
+    def __compare(self, other, l):
+        return l(self.toStoreFmt(), other.toStoreFmt())
+
+    def __lt__(self, other):
+        return self.__compare(other, lambda s, o: s < o)
+
+    def __gt__(self, other):
+        return self.__compare(other, lambda s, o: s > o)
+
+    def __eq__(self, other):
+        return self.__compare(other, lambda s, o: s == o)
+
+    def __le__(self, other):
+        return self.__compare(other, lambda s, o: s <= o)
+
+    def __ge__(self, other):
+        return self.__compare(other, lambda s, o: s >= o)
+
+    def __ne__(self, other):
+        return self.__compare(other, lambda s, o: s != o)
 
     @property
     def year(self):
@@ -151,7 +172,7 @@ class Task:
     LOWBYTE = (1 << 8) - 1
     HIGHBYTE = LOWBYTE << 8
 
-    def __init__(self, name, maxRep, repNum, repDays, date):
+    def __init__(self, name: bytes, maxRep, repNum, repDays, date):
         def unNull(s):
             i = 0
             while i < len(s):
@@ -187,32 +208,32 @@ class Task:
         return self.__date
 
     def toStoreFmt(self):
-        """Converts the Task object to a string representation.
+        """Converts the Task object to a bytes representation.
 """
-        ret = self.__name + chr(0)
-        ret += chr((self.__maxRep & Task.HIGHBYTE) >> 8) + chr(self.__maxRep & Task.LOWBYTE)
-        ret += chr((self.__repNum & Task.HIGHBYTE) >> 8) + chr(self.__repNum & Task.LOWBYTE)
+        ret = self.__name + bytes([0])
+        ret += bytes([(self.__maxRep & Task.HIGHBYTE) >> 8, self.__maxRep & Task.LOWBYTE])
+        ret += bytes([(self.__repNum & Task.HIGHBYTE) >> 8, self.__repNum & Task.LOWBYTE])
         bits = self.__date.toStoreFmt()
         b = (bits >> (Datetime.NUM_BITS - 1)) & 1
         bits &= (1 << (Datetime.NUM_BITS - 1)) - 1
-        ret += chr((self.__repDays << 1) + b)
-        ret += bitsToStr(bits, Datetime.NUM_BITS // 8)
+        ret += bytes([(self.__repDays << 1) + b])
+        ret += bitsToBytes(bits, Datetime.NUM_BITS // 8)
         return ret
 
     @staticmethod
     def fromStoreFmt(s):
         """Converts the string representation to a Task object.
 """
-        name = ""
+        name = b""
         i = 0
-        while s[i] != chr(0):
+        while s[i]:
             i += 1
         name = s[:i]
-        maxRep = (ord(s[i + 1]) << 8) + ord(s[i + 2])
-        repNum = (ord(s[i + 3]) << 8) + ord(s[i + 4])
-        b = ord(s[i + 5]) & 1
-        repDays = ord(s[i + 5]) >> 1
-        date = Datetime.fromStoreFmt(strToBits(s[i + 6:i + 6 + Datetime.NUM_BITS // 8]))
+        maxRep = ((s[i + 1]) << 8) + s[i + 2]
+        repNum = ((s[i + 3]) << 8) + s[i + 4]
+        b = s[i + 5] & 1
+        repDays = s[i + 5] >> 1
+        date = Datetime.fromStoreFmt(bytesToBits(s[i + 6:i + 6 + Datetime.NUM_BITS // 8]))
         return (Task(name, maxRep, repNum, repDays, date), s[i + 6 + Datetime.NUM_BITS // 8:])
 
     def __str__(self):
@@ -248,6 +269,7 @@ class TaskList(list):
                 self.insert(i, task)
                 return
         self.insert(len(self), task)
+        return
 
 class TaskListDict(dict):
     def __getitem__(self, key):
@@ -350,7 +372,7 @@ def makeTask():
         return frame
 
     def buildTask(event=None):
-        n = name.get()
+        n = bytes(name.get(), "UTF-8")
         mr = maxRep.get()
         rn = repNum.get()
         rSun = repDaysVar[0].get()
@@ -421,6 +443,9 @@ def makeMenubar(window):
         return fd.LoadFileDialog(window)
 
     def saveAndQuit(event=None):
+        for filename in lists.keys():
+            with open(filename, "w+b") as l:
+                pass
         # TODO: Save
         window.quit()
 
@@ -471,6 +496,6 @@ if __name__ == "__main__":
     main()
 else:
     dt = Datetime(2017, 11, 17, 20, 57)
-    print(dt.toStoreFmt() - strToBits(bitsToStr(dt.toStoreFmt(), Datetime.NUM_BITS // 8)))
+    print(dt.toStoreFmt() - bytesToBits(bitsToBytes(dt.toStoreFmt(), Datetime.NUM_BITS // 8)))
     t = Task("Test a", 30, 3, SUN, dt)
     print(repr(t.toStoreFmt()))
