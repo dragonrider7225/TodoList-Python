@@ -274,7 +274,7 @@ class TaskList(list):
 class TaskListDict(dict):
     def __getitem__(self, key):
         if self.__contains__(key):
-            return super(dict, self).__getitem__(key)
+            return super().__getitem__(key)
         ret = TaskList()
         self[key] = ret
         return ret
@@ -373,8 +373,8 @@ def makeTask():
 
     def buildTask(event=None):
         n = bytes(name.get(), "UTF-8")
-        mr = maxRep.get()
-        rn = repNum.get()
+        mr = int(maxRep.get())
+        rn = int(repNum.get())
         rSun = repDaysVar[0].get()
         rMon = repDaysVar[1].get()
         rTue = repDaysVar[2].get()
@@ -392,7 +392,7 @@ def makeTask():
         hr = int(dateBoxes[2].get())
         min = int(dateBoxes[3].get())
         d = Datetime(yr, mnt, day, hr, min)
-        lists[lName.get()].append(Task(n, mr, rn, rd, d))
+        lists[listNameVar.get()].append(Task(n, mr, rn, rd, d))
         top.destroy()
 
     def cancel(event=None):
@@ -445,8 +445,9 @@ def makeMenubar(window):
     def saveAndQuit(event=None):
         for filename in lists.keys():
             with open(filename, "w+b") as l:
-                pass
-        # TODO: Save
+                for t in lists[filename]:
+                    l.write(t.toStoreFmt())
+                l.write(bytes([ord("\n")]))
         window.quit()
 
     ctrln, ctrlo, ctrlshifto, ctrlshiftd, ctrlq = ("Ctrl+N", "Ctrl+O",
