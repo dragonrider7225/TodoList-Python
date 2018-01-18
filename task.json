@@ -1,0 +1,14 @@
+{
+    "name": "Example Task",
+    "maxRep": 3,
+    "curRep": 1,
+    "repDays": 0b0010100,
+    "datetime": [2018, 1, 18, 12, 30],
+    "spec_comments": {
+        "name": "The name of the task",
+        "maxRep": "The maximum value of curRep",
+        "curRep": "The current repetition of the task",
+        "repDays": "The days on which the task occurs. Values of each applicable weekday are |'ed together. Sunday is 0b1000000 and each other weekday is half of the preceding one.",
+        "datetime": "An array of numbers. First value is year, second is month, third is day of month, fourth is hour (24h), and fifth is minute"
+    }
+}
