@@ -1,4 +1,5 @@
 import tkinter as tk
+import json
 import os
 import os.path
 from tkinter import filedialog as fd
@@ -86,7 +87,8 @@ class Datetime(metaclass=BoundedRollover):
     def roll(times):
         times = list(times)
         if len(times) != 5:
-            raise ValueError("Datetime instantiation requires exactly five explicit positional arguments")
+            raise ValueError("Datetime instantiation requires exactly five "
+                             + "explicit positional arguments")
         YR, MNT, DAY, HR, MIN = (0, 1, 2, 3, 4)
         minphr = 60
         hrpday = 24
@@ -118,13 +120,27 @@ class Datetime(metaclass=BoundedRollover):
             days = Datetime.days(times[YR], times[MNT])
         return tuple(times)
 
+    def toJson(self):
+        """Convert the Datetime object to a JSON String.
+            """
+        return [self.__yr, self.__mnt + 1, self.__day + 1,
+                self.__hr, self.__min]
+
+    @staticmethod
+    def fromJson(jsonStr):
+        """Convert the JSON String to a Datetime object.
+            """
+        jsonObj = json.lods(jsonStr)
+        return Datetime(jsonObj[0], jsonObj[1] - 1, jsonObj[2] - 1,
+                        jsonObj[3], jsonObj[4])
+
     def toStoreFmt(self):
         """Converts the Datetime object to a sequence of Datetime.NUM_MIN_BITS
-+ Datetime.NUM_HR_BITS + Datetime.NUM_DAY_BITS + Datetime.NUM_MNT_BITS +
-Datetime.NUM_YR_BITS bits. This function is the inverse of
-Datetime.fromStoreFmt(...) when the year of the Datetime object is at least 0
-and at most Datetime.YR_BITS.
-"""
+            + Datetime.NUM_HR_BITS + Datetime.NUM_DAY_BITS + Datetime.NUM_MNT_BITS +
+            Datetime.NUM_YR_BITS bits. This function is the inverse of
+            Datetime.fromStoreFmt(...) when the year of the Datetime object is at least 0
+            and at most Datetime.YR_BITS.
+            """
         ret = Datetime.YR_BITS & self.__yr
         ret <<= Datetime.NUM_MNT_BITS
         ret += self.__mnt
@@ -139,11 +155,11 @@ and at most Datetime.YR_BITS.
     @staticmethod
     def fromStoreFmt(bits):
         """Converts the bits to a Datetime object. All bits except the
-Datetime.NUM_MNT_BITS + Datetime.NUM_DAY_BITS + Datetime.NUM_HR_BITS +
-Datetime.NUM_MIN_BITS least significant bits are used as the year. This
-function is the inverse of Datetime.toStoreFmt(...) when the year of the
-Datetime object is at least 0 and at most Datetime.YR_BITS.
-"""
+            Datetime.NUM_MNT_BITS + Datetime.NUM_DAY_BITS + Datetime.NUM_HR_BITS +
+            Datetime.NUM_MIN_BITS least significant bits are used as the year. This
+            function is the inverse of Datetime.toStoreFmt(...) when the year of the
+            Datetime object is at least 0 and at most Datetime.YR_BITS.
+            """
         min = bits & Datetime.MIN_BITS
         bits >>= Datetime.NUM_MIN_BITS
         hr = bits & Datetime.HR_BITS
@@ -162,10 +178,12 @@ Datetime object is at least 0 and at most Datetime.YR_BITS.
         return dpm[month](year)
 
     def __str__(self):
-        return f"{self.__yr:04}{self.__mnt+1:02}{self.__day+1:02}T{self.__hr:02}{self.__min:02}"
+        return (f"{self.__yr:04}{self.__mnt+1:02}{self.__day+1:02}"
+                + "T{self.__hr:02}{self.__min:02}")
 
     def __repr__(self):
-        return f"Datetime({self.__yr}, {self.__mnt}, {self.__day}, {self.__hr}, {self.__min})"
+        return (f"Datetime({self.__yr}, {self.__mnt}, {self.__day}, "
+                + "{self.__hr}, {self.__min})")
 
 SUN, MON, TUE, WED, THU, FRI, SAT = 0b1000000, 0b100000, 0b10000, 0b1000, 0b100, 0b10, 0b1
 
@@ -189,6 +207,7 @@ class Task:
         self.__date = date
 
     def draw(self, x, y, width, height, canvas):
+        # Does nothing, since this is on the server side.
         pass
 
     @property
@@ -211,9 +230,28 @@ class Task:
     def date(self):
         return self.__date
 
+    def toJson(self):
+        """Convert the Task object to a JSON String.
+            """
+        ret = {}
+        ret["name"] = self.__name.decode()
+        ret["maxRep"] = self.__maxRep
+        ret["curRep"] = self.__repNum
+        ret["repDays"] = self.__repDays
+        ret["datetime"] = self.__date.toJson()
+        return json.dumps(ret)
+
+    @staticmethod
+    def fromJson(jsonStr):
+        """Convert the JSON String to a Task object.
+            """
+        jsonObj = json.loads(jsonStr)
+        return Task(jsonObj["name"].encode(), jsonObj["maxRep"], jsonObj["curRep"],
+                    jsonObj["repDays"], Datetime.fromJson(jsonObj["datetime"]))
+
     def toStoreFmt(self):
         """Converts the Task object to a bytes representation.
-"""
+            """
         ret = self.__name + bytes([0])
         ret += bytes([(self.__maxRep & Task.HIGHBYTE) >> 8, self.__maxRep & Task.LOWBYTE])
         ret += bytes([(self.__repNum & Task.HIGHBYTE) >> 8, self.__repNum & Task.LOWBYTE])
@@ -227,7 +265,7 @@ class Task:
     @staticmethod
     def fromStoreFmt(s):
         """Converts the bytes representation to a Task object.
-"""
+            """
         name = b""
         i = 0
         while s[i]:
@@ -273,7 +311,8 @@ class TaskCard:
 
     def draw(self, x, y, width, height, leftPadding=15, topPadding=15,
              hPadding=30, vPadding=30, **kwargs):
-        # Round rect code obtained with slight modification from
+        # Does nothing, since this is on the server side.
+        """# Round rect code obtained with slight modification from
         # https://stackoverflow.com/a/44100075
         radius = 17
         points = [x+radius, y,
@@ -299,6 +338,8 @@ class TaskCard:
         self.__canvas.create_polygon(points, **kwargs, smooth=True)
         self.__task.draw(x + leftPadding, y + topPadding, width - hPadding,
                          height - vPadding, self.__canvas)
+                         """
+        pass
 
 class TaskList(list):
     def append(self, task):
@@ -477,7 +518,9 @@ def makeTask():
     top.focus()
     return
 
-def save(event=None):
+def save(event=None, win=None):
+    if win:
+        print("({0}, {1})".format(win.winfo_width(), win.winfo_height()))
     for filename in lists.keys():
         with open(filename, "w+b") as l:
             for t in lists[filename]:
@@ -488,7 +531,7 @@ def makeMenubar(window):
         return fd.LoadFileDialog(window)
 
     def saveAndQuit(event=None):
-        save()
+        save(win=window)
         window.quit()
 
     ctrln, ctrlo, ctrlshifto, ctrlshiftd, ctrlq = ("Ctrl+N", "Ctrl+O",
@@ -525,11 +568,13 @@ def makeMenubar(window):
     return menubar
 
 def main():
+    WIN_WIDTH_PX, WIN_HEIGHT_PX = (1440, 720)
     mainWindow = tk.Tk()
     mainWindow.title("Todo List")
+    mainWindow.geometry("{}x{}".format(WIN_WIDTH_PX, WIN_HEIGHT_PX))
     frame = ttk.Frame(mainWindow)
     vBar = ttk.Scrollbar(frame, orient=VERTICAL)
-    canvas = tk.Canvas(frame, scrollregion=(0, 0, 100, 100), yscrollcommand=vBar.set)
+    canvas = tk.Canvas(frame, scrollregion=(-100, 0, 1400, 100), yscrollcommand=vBar.set)
     vBar["command"] = canvas.yview
     canvas.pack()
     frame.pack()
@@ -537,7 +582,7 @@ def main():
     mainWindow.config(menu=menubar)
     print("Setup complete")
     card = TaskCard(canvas, Task("", 0, 0, SUN, Datetime(2018, 0, 16, 23, 30)))
-    card.draw(10, 10, 300, 100, fill="cyan")
+    card.draw(-100, 100, 300, 100, fill="cyan")
     mainWindow.mainloop()
     print(lists)
 
@@ -546,5 +591,5 @@ if __name__ == "__main__":
 else:
     dt = Datetime(2017, 11, 17, 20, 57)
     print(dt.toStoreFmt() - bytesToBits(bitsToBytes(dt.toStoreFmt(), Datetime.NUM_BITS // 8)))
-    t = Task("Test a", 30, 3, SUN, dt)
-    print(repr(t.toStoreFmt()))
+    t = Task(b"Test a", 30, 3, SUN, dt)
+    print(str(t.toStoreFmt()))
