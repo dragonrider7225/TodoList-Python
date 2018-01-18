@@ -102,3 +102,5 @@ ENV/
 
 # Visual Studio
 .vs/
+
+.DS_Store
