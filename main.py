@@ -28,7 +28,8 @@ class BoundedRollover(type):
 class Datetime(metaclass=BoundedRollover):
     NUM_MIN_BITS, NUM_HR_BITS, NUM_DAY_BITS, NUM_MNT_BITS = 6, 5, 5, 4
     NUM_YR_BITS = 21
-    NUM_BITS = NUM_MIN_BITS + NUM_HR_BITS + NUM_DAY_BITS + NUM_MNT_BITS + NUM_YR_BITS
+    NUM_BITS = (NUM_MIN_BITS + NUM_HR_BITS + NUM_DAY_BITS + NUM_MNT_BITS
+                + NUM_YR_BITS)
     MIN_BITS, HR_BITS = (1 << NUM_MIN_BITS) - 1, (1 << NUM_HR_BITS) - 1
     DAY_BITS, MNT_BITS = (1 << NUM_DAY_BITS) - 1, (1 << NUM_MNT_BITS) - 1
     YR_BITS = (1 << NUM_YR_BITS) - 1
@@ -187,6 +188,9 @@ class Task:
         self.__repDays = repDays
         self.__date = date
 
+    def draw(self, x, y, width, height, canvas):
+        pass
+
     @property
     def name(self):
         return self.__name
@@ -222,7 +226,7 @@ class Task:
 
     @staticmethod
     def fromStoreFmt(s):
-        """Converts the string representation to a Task object.
+        """Converts the bytes representation to a Task object.
 """
         name = b""
         i = 0
@@ -262,10 +266,44 @@ class Task:
         del x
         return "Task(" + repr(self.__name) + f", {self.__maxRep}, {self.__repNum}, {days}, " + repr(self.__date) + ")"
 
+class TaskCard:
+    def __init__(self, canvas, task):
+        self.__canvas = canvas
+        self.__task = task
+
+    def draw(self, x, y, width, height, leftPadding=15, topPadding=15,
+             hPadding=30, vPadding=30, **kwargs):
+        # Round rect code obtained with slight modification from
+        # https://stackoverflow.com/a/44100075
+        radius = 17
+        points = [x+radius, y,
+                  x+radius, y,
+                  x+width-radius, y,
+                  x+width-radius, y,
+                  x+width, y,
+                  x+width, y+radius,
+                  x+width, y+radius,
+                  x+width, y+height-radius,
+                  x+width, y+height-radius,
+                  x+width, y+height,
+                  x+width-radius, y+height,
+                  x+width-radius, y+height,
+                  x+radius, y+height,
+                  x+radius, y+height,
+                  x, y+height,
+                  x, y+height-radius,
+                  x, y+height-radius,
+                  x, y+radius,
+                  x, y+radius,
+                  x, y]
+        self.__canvas.create_polygon(points, **kwargs, smooth=True)
+        self.__task.draw(x + leftPadding, y + topPadding, width - hPadding,
+                         height - vPadding, self.__canvas)
+
 class TaskList(list):
     def append(self, task):
         for i in range(len(self)):
-            if self[i].date <= task.date:
+            if self[i].date >= task.date:
                 self.insert(i, task)
                 return
         self.insert(len(self), task)
@@ -289,9 +327,11 @@ def makeList():
 def readList(l):
     lists[l.name] = TaskList()
     taskBytes = l.read()
+    print(taskBytes)
     while taskBytes:
         task, taskBytes = Task.fromStoreFmt(taskBytes)
         lists[l.name].append(task)
+        print(taskBytes)
     return
 
 def loadList():
@@ -307,8 +347,7 @@ def loadLists():
     return
 
 def readDirectory(dir):
-    """Read each list with an absolute filename that begins with dir.
-"""
+    """Read each list with an absolute filename that begins with dir.\n"""
     for f in os.listdir(dir):
         if os.path.isdir(f):
             readDirectory(f)
@@ -331,19 +370,18 @@ def makeTask():
     months = ("January", "February", "March", "April", "May", "June",
               "July", "August", "September", "October", "November",
               "December")
-    dateMonthVar = tk.StringVar()
     dateBoxes = []
     ret = []
 
     def makeDaysButtonsFrame():
-        repDaysFrame = tk.Frame(win)
-        repDaysSun = tk.Checkbutton(repDaysFrame, text="Sunday", variable=repDaysVar[0])
-        repDaysMon = tk.Checkbutton(repDaysFrame, text="Monday", variable=repDaysVar[1])
-        repDaysTue = tk.Checkbutton(repDaysFrame, text="Tuesday", variable=repDaysVar[2])
-        repDaysWed = tk.Checkbutton(repDaysFrame, text="Wednesday", variable=repDaysVar[3])
-        repDaysThu = tk.Checkbutton(repDaysFrame, text="Thursday", variable=repDaysVar[4])
-        repDaysFri = tk.Checkbutton(repDaysFrame, text="Friday", variable=repDaysVar[5])
-        repDaysSat = tk.Checkbutton(repDaysFrame, text="Saturday", variable=repDaysVar[6])
+        repDaysFrame = ttk.Frame(win)
+        repDaysSun = ttk.Checkbutton(repDaysFrame, text="Sunday", variable=repDaysVar[0])
+        repDaysMon = ttk.Checkbutton(repDaysFrame, text="Monday", variable=repDaysVar[1])
+        repDaysTue = ttk.Checkbutton(repDaysFrame, text="Tuesday", variable=repDaysVar[2])
+        repDaysWed = ttk.Checkbutton(repDaysFrame, text="Wednesday", variable=repDaysVar[3])
+        repDaysThu = ttk.Checkbutton(repDaysFrame, text="Thursday", variable=repDaysVar[4])
+        repDaysFri = ttk.Checkbutton(repDaysFrame, text="Friday", variable=repDaysVar[5])
+        repDaysSat = ttk.Checkbutton(repDaysFrame, text="Saturday", variable=repDaysVar[6])
         repDaysSun.grid(row=0, sticky=W)
         repDaysMon.grid(row=1, sticky=W)
         repDaysTue.grid(row=2, sticky=W)
@@ -354,15 +392,16 @@ def makeTask():
         return repDaysFrame
 
     def makeDateFrame():
-        frame = tk.Frame(win)
-        dateYearBox = tk.Spinbox(frame, from_=0, to=Datetime.YR_BITS)
-        dateMonthMenu = tk.OptionMenu(frame, dateMonthVar, "", *months)
-        dateDayBox = tk.Spinbox(frame, from_=0, to=31)
-        dateHourBox = tk.Spinbox(frame, from_=0, to=23)
-        dateMinBox = tk.Spinbox(frame, from_=0, to=59)
+        frame = ttk.Frame(win)
+        dateYearBox = ttk.Entry(frame, width=6, exportselection=0)
+        dateMonthBox = ttk.Combobox(frame, values=months, width=10)
+        dateDayBox = ttk.Combobox(frame, values=list(range(1, 32)), width=2)
+        dateHourBox = ttk.Combobox(frame, values=list(range(0, 24)), width=2)
+        dateMinBox = ttk.Combobox(frame, values=list(range(0, 60)), width=2)
         dateBoxes.append(dateYearBox)
         dateYearBox.pack(side=LEFT)
-        dateMonthMenu.pack(side=LEFT)
+        dateBoxes.append(dateMonthBox)
+        dateMonthBox.pack(side=LEFT)
         dateBoxes.append(dateDayBox)
         dateDayBox.pack(side=LEFT)
         dateBoxes.append(dateHourBox)
@@ -387,10 +426,10 @@ def makeTask():
               (THU if rThu else 0) | (FRI if rFri else 0) |
               (SAT if rSat else 0))
         yr = int(dateBoxes[0].get())
-        mnt = months.index(dateMonthVar.get())
-        day = int(dateBoxes[1].get()) - 1
-        hr = int(dateBoxes[2].get())
-        min = int(dateBoxes[3].get())
+        mnt = months.index(dateBoxes[1].get())
+        day = int(dateBoxes[2].get()) - 1
+        hr = int(dateBoxes[3].get())
+        min = int(dateBoxes[4].get())
         d = Datetime(yr, mnt, day, hr, min)
         lists[listNameVar.get()].append(Task(n, mr, rn, rd, d))
         top.destroy()
@@ -401,18 +440,18 @@ def makeTask():
 
     top = tk.Toplevel()
     top.title("New Task...")
-    win = tk.Frame(top)
-    lNameLabel = tk.Label(win, text="List Name: ")
-    lName = tk.OptionMenu(win, listNameVar, "", *lists.keys())
-    nameLabel = tk.Label(win, text="Name: ")
-    name = tk.Entry(win)
-    maxRepLabel = tk.Label(win, text="Maximum Repeat Number: ")
-    maxRep = tk.Entry(win)
-    repNumLabel = tk.Label(win, text="Current Repeat Number: ")
-    repNum = tk.Entry(win)
-    repDaysLabel = tk.Label(win, text="Repeat Days: ")
+    win = ttk.Frame(top)
+    lNameLabel = ttk.Label(win, text="List Name: ")
+    lName = ttk.Combobox(win, textvariable=listNameVar, values=list(lists.keys()))
+    nameLabel = ttk.Label(win, text="Name: ")
+    name = ttk.Entry(win, exportselection=0)
+    maxRepLabel = ttk.Label(win, text="Maximum Repeat Number: ")
+    maxRep = ttk.Entry(win, exportselection=0)
+    repNumLabel = ttk.Label(win, text="Current Repeat Number: ")
+    repNum = ttk.Entry(win, exportselection=0)
+    repDaysLabel = ttk.Label(win, text="Repeat Days: ")
     repDays = makeDaysButtonsFrame()
-    dateLabel = tk.Label(win, text="Date: ")
+    dateLabel = ttk.Label(win, text="Date: ")
     date = makeDateFrame()
     lNameLabel.grid(column=0, row=0, sticky=W)
     lName.grid(column=1, row=0, sticky=W)
@@ -427,10 +466,10 @@ def makeTask():
     dateLabel.grid(column=0, row=5, sticky=W)
     date.grid(column=1, row=5, sticky=W)
     win.grid(column=0, row=0, sticky=(N, E, S, W))
-    win = tk.Frame(top)
-    cancelButton = tk.Button(win, text="Cancel", command=cancel)
+    win = ttk.Frame(top)
+    cancelButton = ttk.Button(win, text="Cancel", command=cancel)
     top.bind("<Escape>", cancel)
-    okButton = tk.Button(win, text="OK", command=buildTask)
+    okButton = ttk.Button(win, text="OK", command=buildTask)
     top.bind("<Return>", buildTask)
     cancelButton.grid(column=0, row=0, sticky=E)
     okButton.grid(column=1, row=0, sticky=W)
@@ -438,16 +477,18 @@ def makeTask():
     top.focus()
     return
 
+def save(event=None):
+    for filename in lists.keys():
+        with open(filename, "w+b") as l:
+            for t in lists[filename]:
+                l.write(t.toStoreFmt())
+
 def makeMenubar(window):
     def loadFile():
         return fd.LoadFileDialog(window)
 
     def saveAndQuit(event=None):
-        for filename in lists.keys():
-            with open(filename, "w+b") as l:
-                for t in lists[filename]:
-                    l.write(t.toStoreFmt())
-                l.write(bytes([ord("\n")]))
+        save()
         window.quit()
 
     ctrln, ctrlo, ctrlshifto, ctrlshiftd, ctrlq = ("Ctrl+N", "Ctrl+O",
@@ -486,12 +527,19 @@ def makeMenubar(window):
 def main():
     mainWindow = tk.Tk()
     mainWindow.title("Todo List")
-    frame = tk.Frame(mainWindow)
+    frame = ttk.Frame(mainWindow)
+    vBar = ttk.Scrollbar(frame, orient=VERTICAL)
+    canvas = tk.Canvas(frame, scrollregion=(0, 0, ), yscrollcommand=vBar.set)
+    vBar["command"] = canvas.yview
+    canvas.pack()
     frame.pack()
     menubar = makeMenubar(mainWindow)
     mainWindow.config(menu=menubar)
     print("Setup complete")
+    card = TaskCard(canvas)
+    card.draw(10, 10, 300, 100, fill="cyan")
     mainWindow.mainloop()
+    print(lists)
 
 if __name__ == "__main__":
     main()
