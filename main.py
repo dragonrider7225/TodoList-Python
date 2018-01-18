@@ -1,3 +1,5 @@
+## dis be de logic, yo
+
 import tkinter as tk
 import os
 import os.path
@@ -120,11 +122,10 @@ class Datetime(metaclass=BoundedRollover):
 
     def toStoreFmt(self):
         """Converts the Datetime object to a sequence of Datetime.NUM_MIN_BITS
-+ Datetime.NUM_HR_BITS + Datetime.NUM_DAY_BITS + Datetime.NUM_MNT_BITS +
-Datetime.NUM_YR_BITS bits. This function is the inverse of
-Datetime.fromStoreFmt(...) when the year of the Datetime object is at least 0
-and at most Datetime.YR_BITS.
-"""
+            + Datetime.NUM_HR_BITS + Datetime.NUM_DAY_BITS + Datetime.NUM_MNT_BITS +
+            Datetime.NUM_YR_BITS bits. This function is the inverse of
+            Datetime.fromStoreFmt(...) when the year of the Datetime object is at least 0
+            and at most Datetime.YR_BITS."""
         ret = Datetime.YR_BITS & self.__yr
         ret <<= Datetime.NUM_MNT_BITS
         ret += self.__mnt
@@ -139,11 +140,10 @@ and at most Datetime.YR_BITS.
     @staticmethod
     def fromStoreFmt(bits):
         """Converts the bits to a Datetime object. All bits except the
-Datetime.NUM_MNT_BITS + Datetime.NUM_DAY_BITS + Datetime.NUM_HR_BITS +
-Datetime.NUM_MIN_BITS least significant bits are used as the year. This
-function is the inverse of Datetime.toStoreFmt(...) when the year of the
-Datetime object is at least 0 and at most Datetime.YR_BITS.
-"""
+            Datetime.NUM_MNT_BITS + Datetime.NUM_DAY_BITS + Datetime.NUM_HR_BITS +
+            Datetime.NUM_MIN_BITS least significant bits are used as the year. This
+            function is the inverse of Datetime.toStoreFmt(...) when the year of the
+            Datetime object is at least 0 and at most Datetime.YR_BITS."""
         min = bits & Datetime.MIN_BITS
         bits >>= Datetime.NUM_MIN_BITS
         hr = bits & Datetime.HR_BITS
@@ -212,8 +212,7 @@ class Task:
         return self.__date
 
     def toStoreFmt(self):
-        """Converts the Task object to a bytes representation.
-"""
+        """Converts the Task object to a bytes representation."""
         ret = self.__name + bytes([0])
         ret += bytes([(self.__maxRep & Task.HIGHBYTE) >> 8, self.__maxRep & Task.LOWBYTE])
         ret += bytes([(self.__repNum & Task.HIGHBYTE) >> 8, self.__repNum & Task.LOWBYTE])
@@ -226,8 +225,7 @@ class Task:
 
     @staticmethod
     def fromStoreFmt(s):
-        """Converts the bytes representation to a Task object.
-"""
+        """Converts the bytes representation to a Task object."""
         name = b""
         i = 0
         while s[i]:
