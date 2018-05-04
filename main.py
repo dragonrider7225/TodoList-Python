@@ -1,6 +1,7 @@
 ## dis be de logic, yo
 
 import tkinter as tk
+from tkinter import scrolledtext
 import json
 import os
 import os.path
@@ -208,9 +209,31 @@ class Task:
         self.__repDays = repDays
         self.__date = date
 
-    def draw(self, x, y, width, height, canvas):
-        # Does nothing, since this is on the server side.
-        pass
+    def draw(self, x, y, width, canvas):
+        rds = ""
+        if self.repDays & SUN:
+            rds += "Su "
+        if self.repDays & MON:
+            rds += "Mo "
+        if self.repDays & TUE:
+            rds += "Tu "
+        if self.repDays & WED:
+            rds += "We "
+        if self.repDays & THU:
+            rds += "Th "
+        if self.repDays & FRI:
+            rds += "Fr "
+        if self.repDays & SAT:
+            rds += "Sa "
+        dt = f"{self.date.year}-{self.date.month + 1:02}-{self.date.day + 1:02}"
+        dt += f" {self.date.hour:02}:{self.date.minute:02}"
+        text = f"{self.__name}\n{self.__repNum}/{self.__maxRep}\n{rds}\n{dt}"
+        id = canvas.create_text(x, y, text=text, width=width, anchor=tk.NW)
+        # frame = ttk.Frame(canvas, width=width, height=height)
+        # frame.pack_propogate(0)
+        # st = ttk.Label(frame, text="abcde fghij klmno pqrst uvwxy")
+        # st.pack()
+        # canvas.create_window(x, y, anchor=NW, window=frame)
 
     @property
     def name(self):
@@ -312,9 +335,8 @@ class TaskCard:
         self.__task = task
 
     def draw(self, x, y, width, height, leftPadding=15, topPadding=15,
-             hPadding=30, vPadding=30, **kwargs):
-        # Does nothing, since this is on the server side.
-        """# Round rect code obtained with slight modification from
+             hPadding=30, **kwargs):
+        # Round rect code obtained with slight modification from
         # https://stackoverflow.com/a/44100075
         radius = 17
         points = [x+radius, y,
@@ -339,9 +361,7 @@ class TaskCard:
                   x, y]
         self.__canvas.create_polygon(points, **kwargs, smooth=True)
         self.__task.draw(x + leftPadding, y + topPadding, width - hPadding,
-                         height - vPadding, self.__canvas)
-                         """
-        pass
+                         self.__canvas)
 
 class TaskList(list):
     def append(self, task):
@@ -520,9 +540,7 @@ def makeTask():
     top.focus()
     return
 
-def save(event=None, win=None):
-    if win:
-        print("({0}, {1})".format(win.winfo_width(), win.winfo_height()))
+def save(event=None):
     for filename in lists.keys():
         with open(filename, "w+b") as l:
             for t in lists[filename]:
@@ -533,7 +551,7 @@ def makeMenubar(window):
         return fd.LoadFileDialog(window)
 
     def saveAndQuit(event=None):
-        save(win=window)
+        save()
         window.quit()
 
     ctrln, ctrlo, ctrlshifto, ctrlshiftd, ctrlq = ("Ctrl+N", "Ctrl+O",
@@ -576,15 +594,17 @@ def main():
     mainWindow.geometry("{}x{}".format(WIN_WIDTH_PX, WIN_HEIGHT_PX))
     frame = ttk.Frame(mainWindow)
     vBar = ttk.Scrollbar(frame, orient=VERTICAL)
-    canvas = tk.Canvas(frame, scrollregion=(-100, 0, 1400, 100), yscrollcommand=vBar.set)
+    canvas = tk.Canvas(frame, scrollregion=(0, 0, 1400, 100),
+                       yscrollcommand=vBar.set, width=WIN_WIDTH_PX,
+                       height=WIN_HEIGHT_PX)
     vBar["command"] = canvas.yview
     canvas.pack()
     frame.pack()
     menubar = makeMenubar(mainWindow)
     mainWindow.config(menu=menubar)
     print("Setup complete")
-    card = TaskCard(canvas, Task("", 0, 0, SUN, Datetime(2018, 0, 16, 23, 30)))
-    card.draw(-100, 100, 300, 100, fill="cyan")
+    card = TaskCard(canvas, Task("Test a", 10, 1, SUN | THU, Datetime(2018, 0, 16, 23, 30)))
+    card.draw(0, 100, 150, 90, fill="cyan")
     mainWindow.mainloop()
     print(lists)
 
